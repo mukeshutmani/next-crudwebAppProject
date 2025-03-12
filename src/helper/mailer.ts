@@ -1,28 +1,54 @@
-import { verify } from "crypto";
+import User from "@/models/userModel";
+import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer"
 
 
-export const sentEmail = async ({email, emailType, userId}:any) => {
+export const sendEmail = async ({email, emailType, userId}:any) => {
       try {
-         // configure mail for usage  
+        
+        const hashToken = await bcrypt.hash(userId.toString(), 10)
+        
+        if(emailType === "VERIFY") {
 
-
-        const transporter = nodemailer.createTransport({
-            host: "smtp.ethereal.email",
-            port: 587,
-            secure: false, // true for port 465, false for other ports
-            auth: {
-              user: "maddison53@ethereal.email",
-              pass: "jn7jnAPss4f63QBp6D",
-            },
-          });
+          // by default behviour of mongoose 
+            await User.findByIdAndUpdate(userId, 
+            { $set: {
+                verifyToken: hashToken, 
+                verifyTokenExpiry:  Date.now() + 3600000
+              } }
+            )  
+        }  else if(emailType === "RESET") {
+          await User.findByIdAndUpdate(userId, 
+          { $set: {
+              forgotPasswordToken: hashToken, 
+              forgotPasswordTokenExpiry: Date.now() + 3600000
+            }}
+            
+          )  
+        }
+         
+        // Looking to send emails in production? Check out our Email API/SMTP product!
+              const transporter = nodemailer.createTransport({
+                  host: "sandbox.smtp.mailtrap.io",
+                  port: 2525,
+                  auth: {
+                    user: "a991895ee5955b", // ❌
+                    pass: "96782a21bcbd76"  // ❌
+                  }
+                });
           
           const mailOptions = {
             from: 'mukesh@mukesh.ai', 
             to: email, 
             subject: emailType === 'VERIFY' ? 'Verify your email': 'Reset Your Password',
-            html: "<b>Hello world?</b>", // html body
+            html: `<p> Click <a href="${process.env.DOMAIN}/verifyemail?token=${hashToken}"> here </a> to 
+            ${emailType==="VERIFY"? "verify your email": "reset your password"}
+            or copy and paste the link below in your browser.
+            <br> ${process.env.DOMAIN}/verifyemail?token=${hashToken}
+           </p>`, // html body
           }
+
+          // todo for forget password
 
          const mailRes = await transporter.sendMail(mailOptions);
 

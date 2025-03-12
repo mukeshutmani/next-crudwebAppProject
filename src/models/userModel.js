@@ -21,13 +21,13 @@ const userSchema = new Schema({
       },
       
       isVerified: {
-        type: boolean,
+        type: Boolean,
         default: false
       },
 
 
       isAdmin: {
-        type: boolean,
+        type: Boolean,
         default: false
       },
 
